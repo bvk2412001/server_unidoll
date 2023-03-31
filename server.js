@@ -37,7 +37,6 @@ io.on("connection", (socket) => {
                     element.playerIdFb = data
                     element.playerIdSocket = socket.id
                     element.member = 2
-
                 }
             })
 
@@ -126,6 +125,19 @@ io.on("connection", (socket) => {
             listRoom.splice(index, 1)
             console.log(listRoom.length)
         }
+    })
+
+    socket.on("OUT_APP", (data) =>{
+        socket.to(data).emit("OUT_APP")
+    })
+
+    socket.on("READY", (data) => {
+        console.log("ready")
+        socket.to(data).emit("READY")
+    })
+
+    socket.on("ALL_READY", (data) => {
+        io.to(data).emit("ALL_READY")
     })
 })
 

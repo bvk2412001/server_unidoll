@@ -1,4 +1,5 @@
-
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 import { config } from "dotenv";
 config({ path: "config.env" });
 import express from "express";
@@ -11,30 +12,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 //socket
-//const { Server } = require("socket.io");
 import { Server } from "socket.io";
 
-//cors
-//const cors = require("cors");
-import cors from "cors";
 
 //init
 const app = express();
-app.use(
-    cors({
-        origin: "*",
-        methods: ["GET", "POST"]
-    })
-);
-
 const httpServer = createServer(app);
-const io = new Server(httpServer, { /* options */ });
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(express.static(path.join(__dirname, "public")));
 
 //start
 httpServer.listen(PORT, () => {
-    console.log(`Server is running at PORT: ${PORT}`);
+  console.log(`Server is running at PORT: ${PORT}`);
 });
 
 export default io;
