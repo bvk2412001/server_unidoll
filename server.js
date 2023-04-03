@@ -29,20 +29,38 @@ io.on("connection", (socket) => {
             listRoom.push(room)
         }
         else {
-            socket.join(roomNo)
-            //random doll
-            let randomDoll = Math.floor(Math.random() * 15)
+            let checkSameId = false
             listRoom.forEach(element => {
                 if (element.id == roomNo) {
-                    element.playerIdFb = data
-                    element.playerIdSocket = socket.id
-                    element.member = 2
+                    if(element.hostIdFb == data){
+                        socket.emit("ID_INVALID")
+                        checkSameId = true
+                    }
                 }
             })
 
-            io.to(roomNo).emit("FUll_ROOM", { roomNo: roomNo, randomDoll: randomDoll })
-            console.log(listRoom)
-            countRoom++
+            if(checkSameId == false){
+                socket.join(roomNo)
+                //random doll
+    
+    
+                let randomDoll = Math.floor(Math.random() * 15)
+                listRoom.forEach(element => {
+                    if (element.id == roomNo) {
+                        element.playerIdFb = data
+                        element.playerIdSocket = socket.id
+                        element.member = 2
+                    }
+                })
+    
+                io.to(roomNo).emit("FUll_ROOM", { roomNo: roomNo, randomDoll: randomDoll })
+                console.log(listRoom)
+                countRoom++
+            }
+            else{
+                clientNo--
+            }
+            
         }
     })
 
