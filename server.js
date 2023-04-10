@@ -10,6 +10,7 @@ let listRoom = []
 io.on("connection", (socket) => {
     console.log(socket.id)
 
+
     socket.on("JOIN_ROOM_PK", (data) => {
         clientNo++
         if (clientNo % 2 != 0) {
@@ -133,7 +134,11 @@ io.on("connection", (socket) => {
                     io.to(listRoom[i].roomNo).emit("OTHER_USER_DISCONNECT")
                 }
                 if (listRoom[i].member == 0) {
+
                     index = i
+                    if(clientNo % 2 == 1){
+                        clientNo--
+                    }
                 }
             }
         }
@@ -156,6 +161,28 @@ io.on("connection", (socket) => {
 
     socket.on("ALL_READY", (data) => {
         io.to(data).emit("ALL_READY")
+    })
+
+
+    // chat
+    socket.on("JOIN_ROOM_GLOBAL", (data)=>{
+        socket.join(data)
+    })
+
+    socket.on("SEND_MESSAGE", (data) => {
+        console.log(data)
+        socket.to(data.roomNo).emit("SEND_MESSAGE", data)
+    })
+    // socket.on("SEND_MESSAGE_LOCALE", (data) => {
+    //     console.log(data)
+    //     socket.to(data.roomNo).emit("SEND_MESSAGE_LOCALE", data)
+    // })
+    socket.on("SEND_MESSAGE_LOCALE", (data)=>{
+        socket.join(data)
+    })
+
+    socket.on("SEND_DOLL", (data) => {
+        
     })
 })
 
