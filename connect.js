@@ -14,7 +14,16 @@ const __dirname = path.dirname(__filename);
 //socket
 import { Server } from "socket.io";
 
+//lets require/import the mongodb native drivers.
 
+const mongoose = require('mongoose');
+const uri = 'mongodb://127.0.0.1/test';
+mongoose.connect(uri)
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function () {
+  console.log('Connected to MongoDB!');
+});
 //init
 const app = express();
 const httpServer = createServer(app);

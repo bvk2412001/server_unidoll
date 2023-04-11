@@ -1,22 +1,60 @@
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 import io from "./connect.js";
 import { config } from "dotenv";
+import { create } from "domain";
 config({ path: "config.env" });
+const { GoogleSpreadsheet } = require('google-spreadsheet');
+const creds = require('./secret-key.json')
+var mongoose = require('mongoose');
 
+
+
+const roomChatSchema = new mongoose.Schema(
+    {
+        fbId: String,
+        sender: String,
+        locale: String,
+        photoURL: String,
+        roomNo: String,
+        message: JSON,
+    }
+)
 
 let clientNo = 0
 let roomNo
 let countRoom = 0
 let listRoom = []
 io.on("connection", (socket) => {
-    console.log(socket.id)
 
+    socket.on('FEEDBACK_SERVER', async (data) => {
+        console.log(data)
+        try {
+            const doc = new GoogleSpreadsheet("1684RnMiHqcGNDSxABYBAiVdTBFjpwK-1tIVzOEkV2yI");
+
+            await doc.useServiceAccountAuth(creds)
+
+            await doc.loadInfo();
+            // socket.emit("FEEDBACK_SERVER", doc)
+            const sheet = doc.sheetsByIndex[0]
+            const HEADERS = ['game_name', 'user_locale', 'language', 'feedbackContent']
+            await sheet.setHeaderRow(HEADERS)
+
+            let newRow = { 'game_name': data.game_name, 'user_locale': data.user_locale, 'language': data.language, 'feedbackContent': data.feedbackContent }
+
+            await sheet.addRow(newRow)
+        }
+        catch (ex) {
+
+        }
+
+    });
 
     socket.on("JOIN_ROOM_PK", (data) => {
         clientNo++
         if (clientNo % 2 != 0) {
             roomNo = countRoom
             socket.join(roomNo)
-            console.log("FFFF")
             io.to(roomNo).emit("JOIN_ROOM", "YOU ARE HOST")
             let room = {
                 id: roomNo,
@@ -33,18 +71,18 @@ io.on("connection", (socket) => {
             let checkSameId = false
             listRoom.forEach(element => {
                 if (element.id == roomNo) {
-                    if(element.hostIdFb == data){
+                    if (element.hostIdFb == data) {
                         socket.emit("ID_INVALID")
                         checkSameId = true
                     }
                 }
             })
 
-            if(checkSameId == false){
+            if (checkSameId == false) {
                 socket.join(roomNo)
                 //random doll
-    
-    
+
+
                 let randomDoll = Math.floor(Math.random() * 15)
                 listRoom.forEach(element => {
                     if (element.id == roomNo) {
@@ -53,15 +91,14 @@ io.on("connection", (socket) => {
                         element.member = 2
                     }
                 })
-    
+
                 io.to(roomNo).emit("FUll_ROOM", { roomNo: roomNo, randomDoll: randomDoll })
-                console.log(listRoom)
                 countRoom++
             }
-            else{
+            else {
                 clientNo--
             }
-            
+
         }
     })
 
@@ -85,7 +122,7 @@ io.on("connection", (socket) => {
     })
 
     socket.on("ALL_DONE", (data) => {
-        console.log(data)
+
         io.to(data.roomNo).emit("ALL_DONE")
         let index = -1
         for (let i = 0; i < listRoom.length; i++) {
@@ -95,23 +132,21 @@ io.on("connection", (socket) => {
         }
 
         if (index != -1) {
-            console.log(listRoom.length)
             listRoom.splice(index, 1)
-            console.log(listRoom.length)
         }
     })
 
     socket.on("RECONNECT", (data) => {
-        console.log(data)
+
         socket.join(data.roomNo)
         listRoom.forEach(element => {
 
             if (element.hostIdFb == data.fbId) {
-                console.log(element)
+
                 element.hostIdSocket = data.fbId
             }
             if (element.playerIdSocket == "") {
-                console.log(element)
+
                 element.playerIdSocket = socket.id
             }
         })
@@ -124,7 +159,6 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         let index = -1
-        console.log("disconnect", socket.id)
 
         for (let i = 0; i < listRoom.length; i++) {
 
@@ -136,7 +170,7 @@ io.on("connection", (socket) => {
                 if (listRoom[i].member == 0) {
 
                     index = i
-                    if(clientNo % 2 == 1){
+                    if (clientNo % 2 == 1) {
                         clientNo--
                     }
                 }
@@ -144,18 +178,17 @@ io.on("connection", (socket) => {
         }
 
         if (index != -1) {
-            console.log(listRoom.length)
+
             listRoom.splice(index, 1)
-            console.log(listRoom.length)
+
         }
     })
 
-    socket.on("OUT_APP", (data) =>{
+    socket.on("OUT_APP", (data) => {
         socket.to(data).emit("OUT_APP")
     })
 
     socket.on("READY", (data) => {
-        console.log("ready")
         socket.to(data).emit("READY")
     })
 
@@ -165,24 +198,73 @@ io.on("connection", (socket) => {
 
 
     // chat
-    socket.on("JOIN_ROOM_GLOBAL", (data)=>{
+    socket.on("JOIN_ROOM_GLOBAL", (data) => {
         socket.join(data)
+        const messages = mongoose.model(data, roomChatSchema)
+
+        messages.find().then((data) => {
+            socket.emit("ALL_MESS", data)
+        }).catch((err) => {
+        });
+
     })
 
     socket.on("SEND_MESSAGE", (data) => {
-        console.log(data)
+        let newMess = {
+            fbId: data.fbData.fbId,
+            sender: data.fbData.sender,
+            locale: data.fbData.locale,
+            photoURL: data.fbData.photoURL,
+            roomNo: data.roomNo,
+            message: JSON.stringify(data.message),
+        }
+        var roomMessage = mongoose.model(data.roomNo, roomChatSchema)
+        roomMessage.countDocuments({})
+            .then((count) => {
+                if (count > 50) {
+                    roomMessage.findOneAndDelete({})
+                        .then((deletedUser) => { })
+                        .catch((err) => { });
+                }
+            })
+            .catch((err) => { });
+        const createUser = async () => {
+            try {
+                const user = await roomMessage.create(newMess)
+            } catch (error) { }
+        }
+        createUser()
         socket.to(data.roomNo).emit("SEND_MESSAGE", data)
-    })
-    // socket.on("SEND_MESSAGE_LOCALE", (data) => {
-    //     console.log(data)
-    //     socket.to(data.roomNo).emit("SEND_MESSAGE_LOCALE", data)
-    // })
-    socket.on("SEND_MESSAGE_LOCALE", (data)=>{
-        socket.join(data)
     })
 
     socket.on("SEND_DOLL", (data) => {
-        
+        let newMess = {
+            fbId: data.dataFb.fbId,
+            sender: data.dataFb.sender,
+            locale: data.dataFb.locale,
+            photoURL: data.dataFb.photoURL,
+            roomNo: data.roomNo,
+            message: JSON.stringify(data.data),
+        }
+        var roomMessage = mongoose.model(data.roomNo, roomChatSchema)
+
+        const createUser = async () => {
+            try {
+                const user = await roomMessage.create(newMess)
+                } catch (error) {
+            }
+        }
+        roomMessage.countDocuments({})
+            .then((count) => {
+                if (count > 50) {
+                    roomMessage.findOneAndDelete({})
+                        .then((deletedUser) => { })
+                        .catch((err) => { });
+                }
+            })
+            .catch((err) => { });
+        createUser()
+        socket.to(data.roomNo).emit("SEND_DOLL", data)
     })
 })
 
