@@ -17,7 +17,8 @@ import { Server } from "socket.io";
 //lets require/import the mongodb native drivers.
 
 const mongoose = require('mongoose');
-const uri = 'mongodb+srv://khoaht2412001:Khoa2412001@chibidoll.ol3bjzv.mongodb.net/test';
+// const uri = 'mongodb+srv://hoantancong:abc12345@cluster0.sgdwgsv.mongodb.net/chatappdb?retryWrites=true&w=majority';
+const uri = 'mongodb://khoakl241:khoa2412001@45.76.146.34:27017/server_chibi'
 mongoose.connect(uri)
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
